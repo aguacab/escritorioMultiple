@@ -14,8 +14,6 @@
             text-align: center;
             overflow: hidden;
             user-select: none;
-            -webkit-user-select: none;
-            -ms-user-select: none;
         }
 
         header, footer {
@@ -48,40 +46,81 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(255, 0, 0, 0.9); /* Fondo rojo semitransparente */
+            background-color: rgba(255, 0, 0, 0.9);
             color: white;
             text-align: center;
             padding: 20px;
             font-size: 24px;
-            z-index: 9999; /* Asegurarse de que el modal esté por encima de todo */
+            z-index: 9999;
         }
 
         #blockModal p {
             margin: 50px 0;
         }
 
-        /* Botón de pantalla completa */
+        /* Estilos para el botón de pantalla completa */
         #fullScreenBtn {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 200px;
-            height: 60px;
+            width: 50%; /* Tamaño inicial grande */
+            height: 100%; 
+            padding: 20px;
             background-color: #007bff;
             color: white;
             border: none;
             cursor: pointer;
             font-size: 24px;
             z-index: 1000;
-            transition: transform 0.5s ease, opacity 0.5s ease;
+            transition: opacity 0.5s ease;
         }
-
         #fullScreenBtn:hover {
             background-color: #0056b3;
         }
 
-        /* Contador de acciones no permitidas */
+        /* Estilos para el botón que aparece en pantalla completa */
+        #extraBtn {
+            display: none;
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            z-index: 1000;
+        }
+        #extraBtn:hover {
+            background-color: #218838;
+        }
+
+        /* Estilos para el botón que aparece al salir de pantalla completa */
+        #exitFullScreenBtn {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80%; /* Tamaño más pequeño */
+            height: 100%; 
+            padding: 20px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 24px;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        #exitFullScreenBtn:hover {
+            background-color: #c82333;
+        }
+
+        /* Estilos para el contador de acciones no permitidas */
         #actionCounter {
             position: fixed;
             top: 10px;
@@ -92,11 +131,6 @@
             border-radius: 5px;
             z-index: 1000;
         }
-
-        /* Menú de selección de formularios */
-        #formSelectorContainer {
-            margin: 20px;
-        }
     </style>
 </head>
 <body>
@@ -104,22 +138,19 @@
 <!-- Botón para activar el modo pantalla completa -->
 <button id="fullScreenBtn">Comenzar</button>
 
+<!-- Botón que aparece en pantalla completa -->
+<button id="extraBtn">No salgas de la pantalla</button>
+
+<!-- Botón que aparece al salir de pantalla completa -->
+<button id="exitFullScreenBtn">Has salido de la Pantalla Completa</button>
+
 <!-- Contador de acciones no permitidas -->
 <div id="actionCounter">Acciones no permitidas: 0</div>
-
-<!-- Contenedor del menú de selección de formularios -->
-<div id="formSelectorContainer">
-    <select id="formSelector">
-        <option value="https://docs.google.com/forms/d/e/1FAIpQLSead1aQt8ZVVE-xZ8gmqO9dq5P4QORy7MwVAKTbhSrJBGziDA/viewform?usp=sharing">Formulario 1</option>
-        <option value="https://docs.google.com/forms/d/e/1FAIpQLSfD2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2e2/viewform?usp=sharing">Formulario 2</option>
-    </select>
-    <button id="acceptBtn">Aceptar</button>
-</div>
 
 <!-- Formulario de Google incrustado -->
 <iframe 
     id="googleForm"
-    src="https://docs.google.com/forms/d/e/1FAIpQLSead1aQt8ZVVE-xZ8gmqO9dq5P4QORy7MwVAKTbhSrJBGziDA/viewform?usp=sharing"
+    src="https://docs.google.com/forms/d/e/1FAIpQLSeku_gHtY5zQMepSFyKo2wD5YAQ4E9n8kBe8RlI_bYIFurcBQ/viewform?usp=header"
     allow="fullscreen">
 </iframe>
 
@@ -131,23 +162,35 @@
 </div>
 
 <script>
-    let exitTimer; // Temporizador para el contador
-    let timeLeft = 8; // Tiempo en segundos
+    let exitTimer; 
+    let timeLeft = 8; 
     let isWarningVisible = false;
-    let actionCounter = 0;
+    let actionCounter = parseInt(localStorage.getItem('actionCounter')) || 0;
 
-    // Actualizar el contador de acciones no permitidas
+    // Actualizar contador de acciones no permitidas
     function updateActionCounter() {
         actionCounter++;
+        localStorage.setItem('actionCounter', actionCounter);
         document.getElementById('actionCounter').textContent = `Acciones no permitidas: ${actionCounter}`;
-        if (actionCounter % 6 === 0) { // Bloquear cada múltiplo de 6
+        if (actionCounter % 6 === 0) {
             window.location.replace('about:blank');
         }
     }
 
-    // Detectar salida de la ventana o cambio de escritorio
-    document.addEventListener('visibilitychange', function() {
+    // Función para resetear el temporizador
+    function resetTimer() {
+        isWarningVisible = false;
+        clearInterval(exitTimer);
+        timeLeft = 8;
+        document.getElementById('timer').textContent = timeLeft;
+        document.getElementById('blockModal').style.display = 'none';
+        document.title = 'Cuestionario Restringido';
+    }
+
+    // Detectar cuando el usuario cambia de ventana o pestaña
+    window.addEventListener('visibilitychange', function() {
         if (document.hidden) {
+            updateActionCounter();
             if (!isWarningVisible) {
                 isWarningVisible = true;
                 document.getElementById('blockModal').style.display = 'block';
@@ -155,41 +198,66 @@
                     if (timeLeft > 0) {
                         timeLeft--;
                         document.getElementById('timer').textContent = timeLeft;
+                        document.title = `Regresa en ${timeLeft} segundos`;
                     } else {
                         clearInterval(exitTimer);
+                        alert('La prueba se ha bloqueado.');
                         window.location.replace('about:blank');
                     }
                 }, 1000);
             }
         } else {
-            clearInterval(exitTimer);
-            timeLeft = 8;
-            document.getElementById('timer').textContent = timeLeft;
-            document.getElementById('blockModal').style.display = 'none';
-            isWarningVisible = false;
+            resetTimer();
         }
     });
 
-    // Detectar si se cambia de escritorio (perdida de foco)
-    window.addEventListener('blur', () => {
+    // Detectar cuando el usuario cambia de escritorio o ventana
+    window.addEventListener('blur', function() {
         updateActionCounter();
-        alert('Has salido del escritorio. Permanece en la prueba.');
     });
 
-    // Botón de pantalla completa
+    // Activar pantalla completa cuando el usuario hace clic en el botón
     document.getElementById('fullScreenBtn').addEventListener('click', function() {
         this.style.display = 'none';
-        document.documentElement.requestFullscreen().catch(console.log);
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen();
+        }
     });
 
-    // Cambiar el formulario según la selección
-    document.getElementById('acceptBtn').addEventListener('click', function() {
-        const selectedForm = document.getElementById('formSelector').value;
-        document.getElementById('googleForm').src = selectedForm;
-        document.getElementById('formSelectorContainer').style.display = 'none';
+    // Mostrar los botones adicionales al entrar en pantalla completa
+    document.addEventListener('fullscreenchange', function() {
+        const extraBtn = document.getElementById('extraBtn');
+        const exitFullScreenBtn = document.getElementById('exitFullScreenBtn');
+        if (document.fullscreenElement) {
+            extraBtn.style.display = 'block';
+            exitFullScreenBtn.style.display = 'none';
+        } else {
+            extraBtn.style.display = 'none';
+            exitFullScreenBtn.style.display = 'block';
+            updateActionCounter(); // Incrementar el contador al salir de pantalla completa
+        }
     });
+
+    // Función para mostrar advertencia al salir de pantalla completa
+    document.addEventListener("DOMContentLoaded", function() {
+        const exitFullScreenBtn = document.getElementById('exitFullScreenBtn');
+        if (exitFullScreenBtn) {
+            exitFullScreenBtn.addEventListener('click', function() {
+                if (confirm("Acción no permitida registrada")) {
+                    updateActionCounter();
+                }
+            });
+        }
+    });
+
+    // Ocultar el botón de pantalla completa al hacer clic en él
+    document.getElementById('fullScreenBtn').addEventListener('click', function() {
+        this.style.display = 'none';
+    });
+
+    // Inicializar el contador de acciones no permitidas desde localStorage
+    document.getElementById('actionCounter').textContent = `Acciones no permitidas: ${actionCounter}`;
 </script>
-
 <footer>
     <p>No se permite tener otras pestañas o ventanas, ni realizar capturas ni salir de la pantalla de la prueba. Cualquier incumplimiento conlleva la anulación de la prueba.</p>
 </footer>
